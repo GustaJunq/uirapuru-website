@@ -50,7 +50,10 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
     api.getConversation(token, conversationId).then((loaded) => {
       setConversation(loaded)
       setMode(loaded.mode)
-      setMessages(loaded.messages || [])
+      setMessages((loaded.messages || []).map((message) => {
+        if (message.role !== "ASSISTANT" || message.thinking) return message
+        return { ...message, ...splitThinking(message.content, true) }
+      }))
       setError("")
     }).catch((cause) => {
       if (cause instanceof ApiError && cause.status === 401) logout()
@@ -165,14 +168,16 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
           <img src={logo} alt={mode === "UIRAPURU" ? "Uirapuru" : "João-de-barro"} className={mode === "UIRAPURU" ? "h-auto w-32 object-contain" : "h-auto w-44 object-contain"} />
         </header>
       ) : (
-        <header className="flex w-full items-center justify-between px-4 py-4 md:px-8 md:py-5">
-          <div className="hidden flex-1 md:block" />
+        <header className="relative flex w-full items-center justify-between px-4 py-4 md:px-8 md:py-5">
+          <div className="flex flex-1 justify-start">
+            {user && <button type="button" onClick={openHistory} className="history-trigger" aria-label="Abrir histórico"><PanelLeft /></button>}
+          </div>
           <nav aria-label="Escolha do modelo" className="model-switch flex items-center rounded-full bg-secondary p-1.5">
             <button type="button" onClick={() => changeMode("UIRAPURU")} aria-pressed={mode === "UIRAPURU"} className="model-option rounded-full px-4 py-1.5 text-sm font-medium">Uirapuru Chat</button>
             <button type="button" onClick={() => changeMode("JOAO_DE_BARRO")} aria-pressed={mode === "JOAO_DE_BARRO"} className="model-option rounded-full px-4 py-1.5 text-sm font-medium">João-de-barro</button>
           </nav>
           <div className="flex flex-1 justify-end gap-2">
-            {user ? <><button type="button" onClick={openHistory} className="history-trigger" aria-label="Abrir histórico"><PanelLeft /></button><Button variant="outline" size="sm" onClick={logout} aria-label="Sair"><LogOut data-icon="inline-start" />Sair</Button></> : <><Button variant="outline" onClick={() => setAuthMode("login")} className="rounded-full">Entrar</Button><Button onClick={() => setAuthMode("register")} className="rounded-full bg-account text-account-foreground hover:bg-account/90">Criar Conta</Button></>}
+            {user ? <Button variant="outline" size="sm" onClick={logout} aria-label="Sair"><LogOut data-icon="inline-start" />Sair</Button> : <><Button variant="outline" onClick={() => setAuthMode("login")} className="rounded-full">Entrar</Button><Button onClick={() => setAuthMode("register")} className="rounded-full bg-account text-account-foreground hover:bg-account/90">Criar Conta</Button></>}
           </div>
         </header>
       )}
@@ -207,7 +212,7 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
 function MessageRow({ message, mode }: { message: ChatMessage; mode: Mode }) {
   return <article className={message.role === "USER" ? "flex justify-end" : "flex justify-start"}>
     <div className={message.role === "USER" ? "max-w-[78%] rounded-3xl rounded-br-lg bg-account px-5 py-3 text-sm leading-relaxed text-account-foreground" : "flex max-w-[74%] flex-col gap-3 py-2 text-sm leading-relaxed text-foreground"}>
-      {message.role === "ASSISTANT" && message.thinking && <details className="group rounded-xl border border-border bg-secondary/40 px-4 py-3" open={!message.content}><summary className="cursor-pointer font-medium text-muted-foreground">Pensamento</summary><p className="mt-2 whitespace-pre-wrap text-muted-foreground">{message.thinking}</p></details>}
+      {message.role === "ASSISTANT" && message.thinking && <details className="group rounded-xl border border-border bg-secondary/40 px-4 py-3" open><summary className="cursor-pointer font-medium text-muted-foreground">Pensamento</summary><p className="mt-2 whitespace-pre-wrap text-muted-foreground">{message.thinking}</p></details>}
       {message.content ? <p className="whitespace-pre-wrap">{message.content}</p> : !message.thinking && <span className="flex items-center gap-2 text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />{mode === "UIRAPURU" ? "Pensando..." : "João-de-barro está trabalhando..."}</span>}
     </div>
   </article>
