@@ -92,7 +92,7 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
     catch (cause) { setError(cause instanceof Error ? cause.message : "Não foi possível renomear.") }
   }
   async function deleteConversation(item: Conversation) {
-    if (!window.confirm(`Excluir “${item.title}”?`)) return
+    if (!window.confirm(`Excluir "${item.title}"?`)) return
     try {
       await api.deleteConversation(token, item.id)
       await loadHistory()
@@ -176,7 +176,7 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
             <button type="button" onClick={() => changeMode("JOAO_DE_BARRO")} aria-pressed={mode === "JOAO_DE_BARRO"} className="model-option rounded-full px-4 py-1.5 text-sm font-medium">João-de-barro</button>
           </nav>
           <div className="flex flex-1 justify-end gap-2">
-            {user ? <Button variant="outline" size="sm" onClick={logout} aria-label="Sair"><LogOut data-icon="inline-start" />Sair</Button> : <><Button variant="outline" onClick={() => setAuthMode("login")} className="rounded-full">Entrar</Button><Button onClick={() => setAuthMode("register")} className="rounded-full bg-account text-account-foreground hover:bg-account/90">Criar Conta</Button></>}
+            {user ? <Button variant="outline" size="sm" onClick={logout} aria-label="Sair"><LogOut data-icon="inline-start" />Sair</Button> : <><Button variant="outline" onClick={() => setAuthMode("login")}>Entrar</Button><Button onClick={() => setAuthMode("register")}>Registrar</Button></>}
           </div>
         </header>
       )}
@@ -184,12 +184,15 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
       {routeChat ? (
         <section className="chat-view-enter mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden px-5" aria-label="Conversa">
           <div className="chat-scroll flex flex-1 flex-col gap-6 overflow-y-auto pb-8 pt-8 md:px-1" aria-live="polite">
-            {loadingConversation ? <div className="flex flex-1 items-center justify-center text-muted-foreground"><LoaderCircle className="size-5 animate-spin" /><span className="sr-only">Carregando conversa</span></div> : messages.map((message, index) => <MessageRow key={message.id || `${message.role}-${index}`} message={message} mode={mode} />)}
-            {!loadingConversation && error && messages.length === 0 && <div className="m-auto text-center"><p className="text-sm text-muted-foreground">{error}</p><Button variant="outline" className="mt-4 rounded-full" onClick={() => router.push("/")}>Nova conversa</Button></div>}
+            {loadingConversation ? <div className="flex flex-1 items-center justify-center text-muted-foreground"><LoaderCircle className="size-5 animate-spin" /><span className="sr-only">Carregando...</span></div> : null}
+            {!loadingConversation && error && messages.length === 0 && <div className="m-auto text-center"><p className="text-sm text-muted-foreground">{error}</p><Button variant="outline" className="mt-4" onClick={() => router.push("/")}>Voltar</Button></div>}
+            {messages.map((message, index) => (
+              <MessageRow key={index} message={message} mode={mode} />
+            ))}
             <div ref={bottomRef} />
           </div>
           <Composer prompt={prompt} setPrompt={setPrompt} pending={pending} mode={mode} submit={submit} onKeyDown={handleKeyDown} stop={() => abortRef.current?.abort()} compact />
-          {error && messages.length > 0 && <p role="alert" className="pb-2 text-center text-sm text-muted-foreground">{error} <button className="underline underline-offset-4" onClick={() => setError("")}>Fechar</button></p>}
+          {error && messages.length > 0 && <p role="alert" className="pb-2 text-center text-sm text-muted-foreground">{error} <button className="underline underline-offset-4" onClick={() => setError("")}>Descartar</button></p>}
           <Legal mode={mode} />
         </section>
       ) : (
@@ -210,21 +213,21 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
 
 function MessageRow({ message, mode }: { message: ChatMessage; mode: Mode }) {
   return <article className={`message-enter ${message.role === "USER" ? "flex justify-end" : "flex justify-start"}`}>
-    <div className={message.role === "USER" ? "max-w-[78%] rounded-3xl rounded-br-lg bg-account px-5 py-3 text-sm leading-relaxed text-account-foreground" : "flex max-w-[74%] flex-col gap-3 py-2 text-sm leading-relaxed text-foreground"}>
-      {message.role === "ASSISTANT" && message.thinking && <details className="group rounded-xl border border-border bg-secondary/40 px-4 py-3" open><summary className="cursor-pointer font-medium text-muted-foreground">Pensamento</summary><p className="mt-2 whitespace-pre-wrap text-muted-foreground">{message.thinking}</p></details>}
-      {message.content ? <p className="whitespace-pre-wrap">{message.content}</p> : !message.thinking && <span className="flex items-center gap-2 text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />{mode === "UIRAPURU" ? "Pensando..." : "João-de-barro está trabalhando..."}</span>}
+    <div className={message.role === "USER" ? "max-w-[78%] rounded-3xl rounded-br-lg bg-account px-5 py-3 text-sm leading-relaxed text-account-foreground" : "flex max-w-[74%] flex-col gap-3 py-2 text-sm leading-relaxed"}>
+      {message.role === "ASSISTANT" && message.thinking && <details className="group rounded-xl border border-border bg-secondary/40 px-4 py-3" open><summary className="cursor-pointer font-medium text-xs opacity-60 hover:opacity-80">Pensamento</summary><p className="mt-3 whitespace-pre-wrap text-xs">{message.thinking}</p></details>}
+      {message.content ? <p className="whitespace-pre-wrap">{message.content}</p> : !message.thinking && <span className="flex items-center gap-2 text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /><span className="sr-only">Gerando resposta...</span></span>}
     </div>
   </article>
 }
 
 function Composer({ prompt, setPrompt, pending, mode, submit, onKeyDown, stop, compact = false }: { prompt: string; setPrompt: (value: string) => void; pending: boolean; mode: Mode; submit: (event: FormEvent) => void; onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void; stop: () => void; compact?: boolean }) {
   return <form onSubmit={submit} className={`${compact ? "composer composer-dock-enter mb-3 flex w-full items-center" : "composer flex w-full max-w-[700px] items-center"}`}>
-    <button type="button" className="flex size-12 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:text-primary" aria-label="Adicionar arquivo" title="Envio de arquivos estará disponível em breve"><Plus className="size-7" /></button>
+    <button type="button" className="flex size-12 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:text-primary" aria-label="Adicionar arquivo" title="Enviar arquivo"><Plus className="size-5" /></button>
     <label htmlFor="message" className="sr-only">Sua mensagem</label>
-    <input id="message" value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onKeyDown} disabled={pending} autoComplete="off" placeholder={mode === "UIRAPURU" ? "Manda a boa!" : "Aqui nóis se ajuda, né! Trabalhe com seu copiloto."} className="h-12 min-w-0 flex-1 bg-transparent px-2 text-[15px] tracking-[-0.01em] outline-none placeholder:text-muted-foreground disabled:opacity-70" />
-    {mode === "UIRAPURU" && <div className="hidden shrink-0 items-center gap-2 pr-3 text-base sm:flex"><span className="text-foreground">U1</span><span className="text-muted-foreground">High</span><ChevronDown className="size-5" /></div>}
-    <button type={pending ? "button" : "submit"} onClick={pending ? stop : undefined} disabled={!pending && !prompt.trim()} className="mr-2 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-45" aria-label={pending ? "Parar geração" : "Enviar mensagem"}>{pending ? <Square className="size-4 fill-current" /> : <ArrowRight className="size-5" />}</button>
+    <input id="message" value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onKeyDown} disabled={pending} autoComplete="off" placeholder={mode === "UIRAPURU" ? "Manda aí..." : "O que precisa?"} className="min-w-0 flex-1 border-0 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:opacity-50" />
+    {mode === "UIRAPURU" && <div className="hidden shrink-0 items-center gap-2 pr-3 text-base sm:flex"><span className="text-foreground">U1</span><span className="text-muted-foreground">High</span></div>}
+    <button type={pending ? "button" : "submit"} onClick={pending ? stop : undefined} disabled={!pending && !prompt.trim()} className="mr-2 flex size-9 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:text-primary disabled:opacity-50" aria-label={pending ? "Parar" : "Enviar"}>{pending ? <Square className="size-5 fill-current" /> : <ArrowRight className="size-5" />}</button>
   </form>
 }
 
-function Legal({ mode }: { mode: Mode }) { return <p className="pb-2 text-center text-[9px] leading-relaxed text-muted-foreground sm:text-[10px]">Ao trabalhar com {mode === "UIRAPURU" ? "Uirapuru" : "Uirapuru/João-de-barro"}, você confirma com nossos <a href="#" className="text-foreground hover:underline">TOS</a> e nossa <a href="#" className="text-foreground hover:underline">Política de Privacidade.</a></p> }
+function Legal({ mode }: { mode: Mode }) { return <p className="pb-2 text-center text-[9px] leading-relaxed text-muted-foreground sm:text-[10px]">Ao trabalhar com {mode === "UIRAPURU" ? "Uirapuru Chat" : "João-de-barro"}, você concorda em seguir nossas Políticas e Termos.</p> }
