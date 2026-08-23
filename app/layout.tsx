@@ -7,8 +7,8 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 
 export const metadata: Metadata = {
   title: 'Uirapuru Chat',
-  description: 'Converse com os modelos brasileiros Uirapuru e João-de-barro.',
-  generator: 'v0.app',
+  description: 'Converse com o modelo brasileiro Uirapuru.',
+  generator: 'hand',
   icons: {
     icon: [
       {
