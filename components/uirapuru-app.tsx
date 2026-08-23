@@ -2,7 +2,7 @@
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react"
 import { ArrowRight, ChevronDown, LoaderCircle, LogOut, Plus, Square } from "lucide-react"
-import { api, ApiError, type ChatMessage, type Conversation, type Mode, type User } from "@/lib/uirapuru-api"
+import { api, ApiError, type ChatMessage, type Conversation, type User } from "@/lib/uirapuru-api"
 import { AuthDialog } from "@/components/auth-dialog"
 import { Button } from "@/components/ui/button"
 
@@ -26,7 +26,6 @@ function splitThinking(raw: string, complete = false) {
 }
 
 export function UirapuruApp() {
-  const [mode, setMode] = useState<Mode>("UIRAPURU")
   const [authMode, setAuthMode] = useState<AuthMode>(null)
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState("")
@@ -65,19 +64,6 @@ export function UirapuruApp() {
     setMessages([])
   }
 
-  async function pollAgent(runId: string, signal: AbortSignal) {
-    while (!signal.aborted) {
-      const run = await api.getAgentRun(token, runId, signal)
-      if (run.status === "COMPLETED") return run.finalOutput || "Tarefa concluída."
-      if (run.status === "FAILED") throw new ApiError(run.error || "O João-de-barro não conseguiu concluir a tarefa.")
-      await new Promise<void>((resolve, reject) => {
-        const timeout = window.setTimeout(resolve, 1800)
-        signal.addEventListener("abort", () => { window.clearTimeout(timeout); reject(new DOMException("Aborted", "AbortError")) }, { once: true })
-      })
-    }
-    throw new DOMException("Aborted", "AbortError")
-  }
-
   async function sendMessage(messageText: string) {
     if (!token) { setAuthMode("login"); return }
     if (pending || !messageText.trim()) return
@@ -89,28 +75,21 @@ export function UirapuruApp() {
     abortRef.current = controller
     let activeConversation = conversation
     try {
-      if (!activeConversation || activeConversation.mode !== mode) {
-        activeConversation = await api.createConversation(token, { title: text.slice(0, 54), mode })
+      if (!activeConversation) {
+        activeConversation = await api.createConversation(token, { title: text.slice(0, 54) })
         setConversation(activeConversation)
         setMessages([])
       }
       setMessages((current) => [...current, { role: "USER", content: text }, { role: "ASSISTANT", content: "" }])
-      if (mode === "UIRAPURU") {
-        let streamed = ""
-        const final = await api.streamMessage(token, activeConversation.id, text, (piece) => {
-          streamed += piece
-          const parsed = splitThinking(streamed)
-          setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
-        }, controller.signal)
-        const completeResponse = streamed || final
-        if (completeResponse) {
-          const parsed = splitThinking(completeResponse, true)
-          setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
-        }
-      } else {
-        const { agentRunId } = await api.startAgent(token, activeConversation.id, text, controller.signal)
-        const output = await pollAgent(agentRunId, controller.signal)
-        const parsed = splitThinking(output, true)
+      let streamed = ""
+      const final = await api.streamMessage(token, activeConversation.id, text, (piece) => {
+        streamed += piece
+        const parsed = splitThinking(streamed)
+        setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
+      }, controller.signal)
+      const completeResponse = streamed || final
+      if (completeResponse) {
+        const parsed = splitThinking(completeResponse, true)
         setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
       }
     } catch (cause) {
@@ -133,23 +112,12 @@ export function UirapuruApp() {
     if (event.key === "Enter" && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); void sendMessage(prompt) }
   }
   function stop() { abortRef.current?.abort() }
-  function changeMode(nextMode: Mode) {
-    if (pending) return
-    setMode(nextMode)
-    setConversation(null)
-    setMessages([])
-    setError("")
-  }
 
   const hasChat = messages.length > 0
   return (
-    <main className={`relative flex min-h-svh flex-col overflow-hidden bg-background text-foreground ${mode === "JOAO_DE_BARRO" ? "joao-theme" : ""}`}>
+    <main className="relative flex min-h-svh flex-col overflow-hidden bg-background text-foreground">
       <header className="flex w-full items-center justify-between px-4 py-4 md:px-8 md:py-5">
         <div className="hidden flex-1 md:block" />
-        <nav aria-label="Escolha do modelo" className="model-switch flex items-center rounded-full bg-secondary p-1.5">
-          <button type="button" onClick={() => changeMode("UIRAPURU")} aria-pressed={mode === "UIRAPURU"} className="model-option rounded-full px-4 py-1.5 text-sm font-medium">Uirapuru Chat</button>
-          <button type="button" onClick={() => changeMode("JOAO_DE_BARRO")} aria-pressed={mode === "JOAO_DE_BARRO"} className="model-option rounded-full px-4 py-1.5 text-sm font-medium">João-de-barro</button>
-        </nav>
         <div className="flex flex-1 justify-end gap-2">
           {user ? <><span className="hidden self-center text-sm text-muted-foreground lg:block">@{user.username}</span><Button variant="outline" size="sm" onClick={logout} aria-label="Sair"><LogOut className="size-4" /></Button></> : <Button onClick={() => setAuthMode("login")} size="sm">Entrar</Button>}
         </div>
@@ -173,22 +141,22 @@ export function UirapuruApp() {
             ))}
             <div ref={bottomRef} />
           </div>
-          <Composer prompt={prompt} setPrompt={setPrompt} pending={pending} mode={mode} submit={submit} onKeyDown={handleKeyDown} stop={stop} compact />
+          <Composer prompt={prompt} setPrompt={setPrompt} pending={pending} submit={submit} onKeyDown={handleKeyDown} stop={stop} compact />
           {error && <p role="alert" className="pb-2 text-center text-sm text-destructive">{error} <button className="underline underline-offset-4" onClick={() => setError("")}>Fechar</button></p>}
-          <Legal mode={mode} />
+          <Legal />
         </section>
       ) : (
         <section className="flex flex-1 flex-col items-center px-4">
           <div className="hero-enter flex w-full flex-1 flex-col items-center justify-center gap-9 pb-24">
             <img
-              src={mode === "UIRAPURU" ? LOGO_URL : "/images/joao-de-barro.svg"}
-              alt={mode === "UIRAPURU" ? "Uirapuru" : "João-de-barro"}
-              className={mode === "UIRAPURU" ? "brand-logo h-auto w-52 object-contain" : "brand-logo joao-logo h-auto w-72 object-contain"}
+              src={LOGO_URL}
+              alt="Uirapuru"
+              className="brand-logo h-auto w-52 object-contain"
             />
-            <Composer prompt={prompt} setPrompt={setPrompt} pending={pending} mode={mode} submit={submit} onKeyDown={handleKeyDown} stop={stop} />
+            <Composer prompt={prompt} setPrompt={setPrompt} pending={pending} submit={submit} onKeyDown={handleKeyDown} stop={stop} />
             {error && <p role="alert" className="max-w-xl text-center text-sm text-destructive">{error}</p>}
           </div>
-          <Legal mode={mode} />
+          <Legal />
         </section>
       )}
       <AuthDialog mode={authMode} onOpenChange={(open) => !open && setAuthMode(null)} onAuthenticated={handleAuthenticated} />
@@ -196,14 +164,14 @@ export function UirapuruApp() {
   )
 }
 
-function Composer({ prompt, setPrompt, pending, mode, submit, onKeyDown, stop, compact = false }: { prompt: string; setPrompt: (value: string) => void; pending: boolean; mode: Mode; submit: (event: FormEvent) => void; onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void; stop: () => void; compact?: boolean }) {
-  return <form onSubmit={submit} className={`${compact ? "composer mb-3 flex w-full items-center" : "composer flex w-full items-center"} ${mode === "JOAO_DE_BARRO" && !compact ? "joao-composer" : ""}`}>
+function Composer({ prompt, setPrompt, pending, submit, onKeyDown, stop, compact = false }: { prompt: string; setPrompt: (value: string) => void; pending: boolean; submit: (event: FormEvent) => void; onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void; stop: () => void; compact?: boolean }) {
+  return <form onSubmit={submit} className={compact ? "composer mb-3 flex w-full items-center" : "composer flex w-full items-center"}>
     <button type="button" className="flex size-12 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:text-primary" aria-label="Adicionar arquivo" title="Enviar arquivo"><Plus className="size-5" /></button>
     <label htmlFor="message" className="sr-only">Sua mensagem</label>
-    <input id="message" value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onKeyDown} disabled={pending} autoComplete="off" placeholder={mode === "UIRAPURU" ? "Manda aí, passarinho!" : "Manda aí, João!"} className="flex flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground" />
-    {mode === "UIRAPURU" && <div className="hidden shrink-0 items-center gap-2 pr-3 text-base sm:flex"><span className="text-foreground">U1</span><span className="text-muted-foreground">High</span></div>}
+    <input id="message" value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onKeyDown} disabled={pending} autoComplete="off" placeholder="Manda aí, passarinho!" className="flex flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground" />
+    <div className="hidden shrink-0 items-center gap-2 pr-3 text-base sm:flex"><span className="text-foreground">U1</span><span className="text-muted-foreground">High</span></div>
     <button type={pending ? "button" : "submit"} onClick={pending ? stop : undefined} disabled={!pending && !prompt.trim()} className="mr-2 flex size-9 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:text-primary disabled:opacity-50 disabled:hover:text-foreground">{pending ? <Square className="size-4 fill-current" /> : <ArrowRight className="size-4" />}</button>
   </form>
 }
 
-function Legal({ mode }: { mode: Mode }) { return <p className="pb-2 text-center text-[9px] leading-relaxed text-muted-foreground sm:text-[10px]">Ao trabalhar com {mode === "UIRAPURU" ? "Uirapuru" : "João-de-barro"}, você concorda em revisar as respostas antes de usar para tarefas críticas.</p> }
+function Legal() { return <p className="pb-2 text-center text-[9px] leading-relaxed text-muted-foreground sm:text-[10px]">Ao trabalhar com Uirapuru, você concorda em revisar as respostas antes de usar para tarefas críticas.</p> }
