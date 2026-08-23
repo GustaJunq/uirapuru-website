@@ -4,7 +4,7 @@ import Link from "next/link"
 import { MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react"
 import type { Conversation } from "@/lib/uirapuru-api"
 
-export function ChatHistory({ open, activeId, conversations, loading, onClose, onRename, onDelete }: {
+export function ChatHistory({ open, activeId, conversations, loading, onClose, onRename, onDelete, onSelectConversation }: {
   open: boolean
   activeId?: string
   conversations: Conversation[]
@@ -12,6 +12,7 @@ export function ChatHistory({ open, activeId, conversations, loading, onClose, o
   onClose: () => void
   onRename: (conversation: Conversation) => void
   onDelete: (conversation: Conversation) => void
+  onSelectConversation: (id: string) => void
 }) {
   return (
     <>
@@ -29,10 +30,10 @@ export function ChatHistory({ open, activeId, conversations, loading, onClose, o
         <div className="chat-scroll flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
           {loading ? <p className="px-3 py-4 text-sm text-muted-foreground">Carregando conversas...</p> : conversations.length === 0 ? <p className="px-3 py-4 text-sm leading-relaxed text-muted-foreground">Suas conversas aparecerão aqui.</p> : conversations.map((conversation) => (
             <div key={conversation.id} className="history-item" data-active={conversation.id === activeId}>
-              <Link href={`/chat/${conversation.id}`} onClick={onClose} className="min-w-0 flex-1 px-3 py-2.5">
+              <button type="button" onClick={() => { onSelectConversation(conversation.id); onClose(); }} className="min-w-0 flex-1 px-3 py-2.5 text-left">
                 <span className="block truncate text-sm font-medium">{conversation.title}</span>
                 <span className="mt-0.5 block text-[11px] text-muted-foreground">{conversation.mode === "UIRAPURU" ? "Uirapuru" : "João-de-barro"}</span>
-              </Link>
+              </button>
               <details className="relative mr-1">
                 <summary className="history-icon-button list-none" aria-label={`Ações de ${conversation.title}`}><MoreHorizontal /></summary>
                 <div className="history-menu">
