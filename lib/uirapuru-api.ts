@@ -3,7 +3,15 @@ const API_URL = "https://uirapuru-api.onrender.com"
 export type Mode = "UIRAPURU" | "JOAO_DE_BARRO"
 export type User = { id: string; email: string; username: string; createdAt: string }
 export type ChatMessage = { id?: string; role: "USER" | "ASSISTANT" | "SYSTEM"; content: string; thinking?: string | null; createdAt?: string }
-export type Conversation = { id: string; title: string; mode: Mode; messages?: ChatMessage[] }
+export type Conversation = {
+  id: string
+  title: string
+  mode: Mode
+  messages?: ChatMessage[]
+  createdAt?: string
+  updatedAt?: string
+  _count?: { messages: number }
+}
 export type AgentRun = { id: string; status: "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED"; finalOutput?: string | null; error?: string | null }
 
 type AuthResult = { user: User; token: string }
@@ -50,7 +58,10 @@ export const api = {
   login: (data: { email: string; password: string }) => request<AuthResult>("/api/auth/login", { method: "POST", body: JSON.stringify(data) }),
   me: (token: string) => request<{ user: User }>("/api/auth/me", {}, token),
   createConversation: (token: string, data: { title?: string; mode: Mode }) => request<Conversation>("/api/chat/conversations", { method: "POST", body: JSON.stringify(data) }, token),
+  listConversations: (token: string) => request<Conversation[]>("/api/chat/conversations", {}, token),
   getConversation: (token: string, id: string) => request<Conversation>(`/api/chat/conversations/${id}`, {}, token),
+  renameConversation: (token: string, id: string, title: string) => request<Conversation>(`/api/chat/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) }, token),
+  deleteConversation: (token: string, id: string) => request<void>(`/api/chat/conversations/${id}`, { method: "DELETE" }, token),
   startAgent: (token: string, id: string, message: string, signal?: AbortSignal) => request<{ agentRunId: string }>(`/api/chat/conversations/${id}/agent`, { method: "POST", body: JSON.stringify({ message }) }, token, signal),
   getAgentRun: (token: string, id: string, signal?: AbortSignal) => request<AgentRun>(`/api/chat/agent-runs/${id}`, {}, token, signal),
   async streamMessage(token: string, id: string, message: string, onToken: (token: string) => void, signal?: AbortSignal) {

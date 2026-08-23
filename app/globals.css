@@ -123,6 +123,83 @@
   aspect-ratio: 2048 / 332;
 }
 
+.chat-header {
+  border-bottom: 1px solid rgb(244 244 239 / 4%);
+}
+
+.history-trigger,
+.history-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: .75rem;
+  color: var(--foreground);
+  transition: background-color .2s ease, color .2s ease;
+}
+.history-trigger { border: 1px solid var(--border); }
+.history-trigger:hover,
+.history-icon-button:hover { background: var(--secondary); }
+.history-trigger svg { width: 1.25rem; height: 1.25rem; }
+.history-icon-button svg { width: 1rem; height: 1rem; }
+
+.history-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(0 0 0 / 58%);
+  backdrop-filter: blur(2px);
+}
+.history-panel {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 50;
+  display: flex;
+  width: min(20rem, 88vw);
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: 24px 0 60px rgb(0 0 0 / 34%);
+  transform: translateX(-102%);
+  transition: transform .28s cubic-bezier(.22, 1, .36, 1);
+}
+.history-panel[data-open="true"] { transform: translateX(0); }
+.history-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: .75rem;
+  color: var(--muted-foreground);
+}
+.history-item:hover,
+.history-item[data-active="true"] { background: var(--secondary); color: var(--foreground); }
+.history-menu {
+  position: absolute;
+  top: 2.25rem;
+  right: 0;
+  z-index: 10;
+  width: 8.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: .75rem;
+  background: var(--popover);
+  padding: .25rem;
+  box-shadow: 0 14px 36px rgb(0 0 0 / 34%);
+}
+.history-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: .5rem;
+  border-radius: .5rem;
+  padding: .55rem .65rem;
+  font-size: .75rem;
+  text-align: left;
+}
+.history-menu button:hover { background: var(--secondary); }
+.history-menu svg { width: .875rem; height: .875rem; }
+
 .hero-enter {
   animation: hero-enter .55s cubic-bezier(.22, 1, .36, 1) both;
 }
