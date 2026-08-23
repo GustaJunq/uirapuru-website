@@ -163,7 +163,7 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
   return (
     <main className={`relative flex min-h-svh flex-col overflow-hidden bg-background text-foreground ${mode === "JOAO_DE_BARRO" ? "joao-theme" : ""}`}>
       {routeChat ? (
-        <header className="chat-header relative flex h-16 shrink-0 items-center justify-center px-4">
+        <header className="chat-header chat-header-enter relative flex h-16 shrink-0 items-center justify-center px-4">
           <button type="button" onClick={openHistory} className="history-trigger absolute left-4" aria-label="Abrir histórico"><PanelLeft /></button>
           <img src={logo} alt={mode === "UIRAPURU" ? "Uirapuru" : "João-de-barro"} className={mode === "UIRAPURU" ? "h-auto w-32 object-contain" : "h-auto w-44 object-contain"} />
         </header>
@@ -183,7 +183,7 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
       )}
 
       {routeChat ? (
-        <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden px-5" aria-label="Conversa">
+        <section className="chat-view-enter mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden px-5" aria-label="Conversa">
           <div className="chat-scroll flex flex-1 flex-col gap-6 overflow-y-auto pb-8 pt-8 md:px-1" aria-live="polite">
             {loadingConversation ? <div className="flex flex-1 items-center justify-center text-muted-foreground"><LoaderCircle className="size-5 animate-spin" /><span className="sr-only">Carregando conversa</span></div> : messages.map((message, index) => <MessageRow key={message.id || `${message.role}-${index}`} message={message} mode={mode} />)}
             {!loadingConversation && error && messages.length === 0 && <div className="m-auto text-center"><p className="text-sm text-muted-foreground">{error}</p><Button variant="outline" className="mt-4 rounded-full" onClick={() => router.push("/")}>Nova conversa</Button></div>}
@@ -210,7 +210,7 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
 }
 
 function MessageRow({ message, mode }: { message: ChatMessage; mode: Mode }) {
-  return <article className={message.role === "USER" ? "flex justify-end" : "flex justify-start"}>
+  return <article className={`message-enter ${message.role === "USER" ? "flex justify-end" : "flex justify-start"}`}>
     <div className={message.role === "USER" ? "max-w-[78%] rounded-3xl rounded-br-lg bg-account px-5 py-3 text-sm leading-relaxed text-account-foreground" : "flex max-w-[74%] flex-col gap-3 py-2 text-sm leading-relaxed text-foreground"}>
       {message.role === "ASSISTANT" && message.thinking && <details className="group rounded-xl border border-border bg-secondary/40 px-4 py-3" open><summary className="cursor-pointer font-medium text-muted-foreground">Pensamento</summary><p className="mt-2 whitespace-pre-wrap text-muted-foreground">{message.thinking}</p></details>}
       {message.content ? <p className="whitespace-pre-wrap">{message.content}</p> : !message.thinking && <span className="flex items-center gap-2 text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />{mode === "UIRAPURU" ? "Pensando..." : "João-de-barro está trabalhando..."}</span>}
@@ -219,7 +219,7 @@ function MessageRow({ message, mode }: { message: ChatMessage; mode: Mode }) {
 }
 
 function Composer({ prompt, setPrompt, pending, mode, submit, onKeyDown, stop, compact = false }: { prompt: string; setPrompt: (value: string) => void; pending: boolean; mode: Mode; submit: (event: FormEvent) => void; onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void; stop: () => void; compact?: boolean }) {
-  return <form onSubmit={submit} className={`${compact ? "composer mb-3 flex w-full items-center" : "composer flex w-full max-w-[700px] items-center"}`}>
+  return <form onSubmit={submit} className={`${compact ? "composer composer-dock-enter mb-3 flex w-full items-center" : "composer flex w-full max-w-[700px] items-center"}`}>
     <button type="button" className="flex size-12 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:text-primary" aria-label="Adicionar arquivo" title="Envio de arquivos estará disponível em breve"><Plus className="size-7" /></button>
     <label htmlFor="message" className="sr-only">Sua mensagem</label>
     <input id="message" value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onKeyDown} disabled={pending} autoComplete="off" placeholder={mode === "UIRAPURU" ? "Manda a boa!" : "Aqui nóis se ajuda, né! Trabalhe com seu copiloto."} className="h-12 min-w-0 flex-1 bg-transparent px-2 text-[15px] tracking-[-0.01em] outline-none placeholder:text-muted-foreground disabled:opacity-70" />
