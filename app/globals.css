@@ -264,3 +264,44 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* ---------------------------------------------------------------------------
+   Desabilita o sistema de página de chat para melhorar o streaming.
+   Este bloco oculta os elementos relacionados ao chat e força a remoção de
+   animações/transições que podem atrapalhar o streaming de respostas.
+   Se você preferir remover apenas parcialmente, diga quais partes manter.
+   --------------------------------------------------------------------------- */
+
+.history-trigger,
+.history-icon-button,
+.history-scrim,
+.history-panel,
+.history-item,
+.history-menu,
+.chat-header,
+.chat-scroll,
+.hero-enter,
+.chat-header-enter,
+.chat-view-enter,
+.message-enter,
+.composer-dock-enter {
+  display: none !important;
+  animation: none !important;
+  transition: none !important;
+  box-shadow: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Também desativa animações globais relacionadas ao chat */
+.hero-enter .brand-logo,
+.hero-enter .composer,
+.logo-drift,
+.logo-settle,
+.composer-rise,
+.header-reveal,
+.chat-reveal,
+.message-reveal,
+.dock-rise {
+  animation: none !important;
+}
