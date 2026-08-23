@@ -132,11 +132,10 @@ export function UirapuruApp({ conversationId }: { conversationId?: string }) {
           const parsed = splitThinking(streamed)
           setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
         }, controller.signal)
-        const completeResponse = streamed || final
-        if (completeResponse) {
-          const parsed = splitThinking(completeResponse, true)
-          setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
-        }
+        const parsed = final.answer
+          ? { content: final.answer, thinking: final.thinking }
+          : splitThinking(streamed, true)
+        setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
       } else {
         const { agentRunId } = await api.startAgent(token, activeConversation.id, text, controller.signal)
         const parsed = splitThinking(await pollAgent(agentRunId, controller.signal), true)

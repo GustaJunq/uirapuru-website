@@ -68,7 +68,11 @@ export const api = {
     const response = await fetch(`${API_URL}/api/chat/conversations/${id}/messages`, {
       method: "POST",
       signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: {
+        Accept: "text/event-stream",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ message }),
     }).catch((error) => {
       if (error instanceof DOMException && error.name === "AbortError") throw error
@@ -77,23 +81,33 @@ export const api = {
     if (!response.ok) throw new ApiError(await parseError(response), response.status)
     const reader = response.body?.getReader()
     if (!reader) throw new ApiError("Seu navegador não conseguiu abrir o streaming.")
+
     const decoder = new TextDecoder()
     let buffer = ""
-    let finalAnswer = ""
+    let result: { answer: string; thinking: string | null } = { answer: "", thinking: null }
+
+    const consumeEvent = (event: string) => {
+      const payload = event
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart())
+        .join("\n")
+      if (!payload) return
+      const data = JSON.parse(payload) as { token?: string; done?: boolean; answer?: string; thinking?: string }
+      if (data.token) onToken(data.token)
+      if (data.done) result = { answer: data.answer || "", thinking: data.thinking || null }
+    }
+
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
       buffer += decoder.decode(value, { stream: true })
-      const events = buffer.split("\n\n")
+      const events = buffer.split(/\r?\n\r?\n/)
       buffer = events.pop() || ""
-      for (const event of events) {
-        const line = event.split("\n").find((item) => item.startsWith("data:"))
-        if (!line) continue
-        const data = JSON.parse(line.slice(5).trim()) as { token?: string; done?: boolean; answer?: string }
-        if (data.token) onToken(data.token)
-        if (data.done && data.answer) finalAnswer = data.answer
-      }
+      for (const event of events) consumeEvent(event)
     }
-    return finalAnswer
+    buffer += decoder.decode()
+    if (buffer.trim()) consumeEvent(buffer)
+    return result
   },
 }
