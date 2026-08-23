@@ -98,6 +98,31 @@
 .brand-logo { filter: none; }
 .chat-scroll { scrollbar-width: thin; scrollbar-color: var(--secondary) transparent; }
 
+.joao-theme {
+  --primary: #9b6a36;
+  --primary-foreground: #f4f4ef;
+  --account: #4c1d08;
+}
+
+.joao-theme .model-option[aria-pressed="true"] {
+  border: 1px solid #5e4936;
+  box-shadow: 0 3px 12px rgb(0 0 0 / 28%);
+}
+
+.joao-theme .composer {
+  border-color: #715b45;
+  box-shadow: 0 0 0 1px rgb(155 106 54 / 8%), 0 12px 38px rgb(0 0 0 / 30%), 0 0 25px rgb(155 106 54 / 20%);
+}
+
+.joao-theme .composer:focus-within {
+  border-color: #a4784b;
+  box-shadow: 0 0 0 1px rgb(155 106 54 / 15%), 0 16px 46px rgb(0 0 0 / 34%), 0 0 32px rgb(155 106 54 / 28%);
+}
+
+.joao-logo {
+  aspect-ratio: 2048 / 332;
+}
+
 .hero-enter {
   animation: hero-enter .55s cubic-bezier(.22, 1, .36, 1) both;
 }

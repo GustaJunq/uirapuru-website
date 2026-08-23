@@ -143,7 +143,7 @@ export function UirapuruApp() {
 
   const hasChat = messages.length > 0
   return (
-    <main className="relative flex min-h-svh flex-col overflow-hidden bg-background text-foreground">
+    <main className={`relative flex min-h-svh flex-col overflow-hidden bg-background text-foreground ${mode === "JOAO_DE_BARRO" ? "joao-theme" : ""}`}>
       <header className="flex w-full items-center justify-between px-4 py-4 md:px-8 md:py-5">
         <div className="hidden flex-1 md:block" />
         <nav aria-label="Escolha do modelo" className="model-switch flex items-center rounded-full bg-secondary p-1.5">
@@ -175,16 +175,20 @@ export function UirapuruApp() {
           </div>
           <Composer prompt={prompt} setPrompt={setPrompt} pending={pending} mode={mode} submit={submit} onKeyDown={handleKeyDown} stop={stop} compact />
           {error && <p role="alert" className="pb-2 text-center text-sm text-destructive">{error} <button className="underline underline-offset-4" onClick={() => setError("")}>Fechar</button></p>}
-          <Legal />
+          <Legal mode={mode} />
         </section>
       ) : (
         <section className="flex flex-1 flex-col items-center px-4">
           <div className="hero-enter flex w-full flex-1 flex-col items-center justify-center gap-9 pb-24">
-            <img src={LOGO_URL} alt="Uirapuru" className="brand-logo h-auto w-52 object-contain" />
+            <img
+              src={mode === "UIRAPURU" ? LOGO_URL : "/images/joao-de-barro.svg"}
+              alt={mode === "UIRAPURU" ? "Uirapuru" : "João-de-barro"}
+              className={mode === "UIRAPURU" ? "brand-logo h-auto w-52 object-contain" : "brand-logo joao-logo h-auto w-72 object-contain"}
+            />
             <Composer prompt={prompt} setPrompt={setPrompt} pending={pending} mode={mode} submit={submit} onKeyDown={handleKeyDown} stop={stop} />
             {error && <p role="alert" className="max-w-xl text-center text-sm text-destructive">{error}</p>}
           </div>
-          <Legal />
+          <Legal mode={mode} />
         </section>
       )}
       <AuthDialog mode={authMode} onOpenChange={(open) => !open && setAuthMode(null)} onAuthenticated={handleAuthenticated} />
@@ -193,13 +197,13 @@ export function UirapuruApp() {
 }
 
 function Composer({ prompt, setPrompt, pending, mode, submit, onKeyDown, stop, compact = false }: { prompt: string; setPrompt: (value: string) => void; pending: boolean; mode: Mode; submit: (event: FormEvent) => void; onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void; stop: () => void; compact?: boolean }) {
-  return <form onSubmit={submit} className={compact ? "composer mb-3 flex w-full items-center" : "composer flex w-full max-w-[700px] items-center"}>
+  return <form onSubmit={submit} className={`${compact ? "composer mb-3 flex w-full items-center" : "composer flex w-full items-center"} ${mode === "JOAO_DE_BARRO" && !compact ? "joao-composer max-w-[700px]" : !compact ? "max-w-[700px]" : ""}`}>
     <button type="button" className="flex size-12 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:text-primary" aria-label="Adicionar arquivo" title="Envio de arquivos estará disponível em breve"><Plus className="size-7" /></button>
     <label htmlFor="message" className="sr-only">Sua mensagem</label>
-    <input id="message" value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onKeyDown} disabled={pending} autoComplete="off" placeholder="Manda a boa!" className="h-12 min-w-0 flex-1 bg-transparent px-2 text-[15px] tracking-[-0.01em] outline-none placeholder:text-muted-foreground disabled:opacity-70" />
-    <div className="hidden shrink-0 items-center gap-2 pr-3 text-base sm:flex"><span className="text-foreground">{mode === "UIRAPURU" ? "U1" : "J1"}</span><span className="text-muted-foreground">High</span><ChevronDown className="size-5" /></div>
+    <input id="message" value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onKeyDown} disabled={pending} autoComplete="off" placeholder={mode === "UIRAPURU" ? "Manda a boa!" : "Aqui nóis se ajuda, né! Trabalhe com seu copiloto."} className="h-12 min-w-0 flex-1 bg-transparent px-2 text-[15px] tracking-[-0.01em] outline-none placeholder:text-muted-foreground disabled:opacity-70" />
+    {mode === "UIRAPURU" && <div className="hidden shrink-0 items-center gap-2 pr-3 text-base sm:flex"><span className="text-foreground">U1</span><span className="text-muted-foreground">High</span><ChevronDown className="size-5" /></div>}
     <button type={pending ? "button" : "submit"} onClick={pending ? stop : undefined} disabled={!pending && !prompt.trim()} className="mr-2 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-45" aria-label={pending ? "Parar geração" : "Enviar mensagem"}>{pending ? <Square className="size-4 fill-current" /> : <ArrowRight className="size-5" />}</button>
   </form>
 }
 
-function Legal() { return <p className="pb-2 text-center text-[9px] leading-relaxed text-muted-foreground sm:text-[10px]">Ao conversar com Uirapuru, você confirma com nossos <a href="#" className="text-foreground hover:underline">TOS</a> e nossa <a href="#" className="text-foreground hover:underline">Política de Privacidade.</a></p> }
+function Legal({ mode }: { mode: Mode }) { return <p className="pb-2 text-center text-[9px] leading-relaxed text-muted-foreground sm:text-[10px]">Ao trabalhar com {mode === "UIRAPURU" ? "Uirapuru" : "Uirapuru/João-de-barro"}, você confirma com nossos <a href="#" className="text-foreground hover:underline">TOS</a> e nossa <a href="#" className="text-foreground hover:underline">Política de Privacidade.</a></p> }
