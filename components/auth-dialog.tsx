@@ -42,9 +42,9 @@ export function AuthDialog({ mode, onOpenChange, onAuthenticated }: { mode: Auth
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <FieldGroup>
-            {isRegister && <Field><FieldLabel htmlFor="username">Nome de usuário</FieldLabel><Input id="username" name="username" autoComplete="username" minLength={3} maxLength={32} pattern="@?[a-zA-Z0-9_.]{3,32}" required placeholder="seu.usuario" /></Field>}
+            {isRegister && <Field><FieldLabel htmlFor="username">Nome de usuário</FieldLabel><Input id="username" name="username" autoComplete="username" minLength={3} maxLength={32} pattern="@?[a-zA-Z0-9_]+" required placeholder="seu_usuario" /></Field>}
             <Field><FieldLabel htmlFor="email">E-mail</FieldLabel><Input id="email" name="email" type="email" autoComplete="email" required placeholder="voce@exemplo.com" /></Field>
-            <Field><FieldLabel htmlFor="password">Senha</FieldLabel><Input id="password" name="password" type="password" autoComplete={isRegister ? "new-password" : "current-password"} minLength={isRegister ? 8 : undefined} required placeholder="Mínimo de 8 caracteres" /></Field>
+            <Field><FieldLabel htmlFor="password">Senha</FieldLabel><Input id="password" name="password" type="password" autoComplete={isRegister ? "new-password" : "current-password"} minLength={6} required placeholder="••••••••" /></Field>
             {error && <Field data-invalid><FieldError>{error}</FieldError></Field>}
             <Button type="submit" disabled={pending} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
               {pending && <LoaderCircle data-icon="inline-start" className="animate-spin" />}
