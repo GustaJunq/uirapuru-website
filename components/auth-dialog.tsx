@@ -35,9 +35,9 @@ export function AuthDialog({ mode, onOpenChange, onAuthenticated }: { mode: Auth
   const isRegister = mode === "register"
   return (
     <Dialog open={mode !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="border border-border bg-popover p-6 sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl">{isRegister ? "Criar sua conta" : "Boas-vindas de volta"}</DialogTitle>
+      <DialogContent className="border border-border bg-popover p-7 shadow-2xl sm:max-w-md sm:rounded-2xl">
+        <DialogHeader className="gap-2">
+          <DialogTitle className="text-2xl font-semibold tracking-tight">{isRegister ? "Criar sua conta" : "Boas-vindas de volta"}</DialogTitle>
           <DialogDescription>{isRegister ? "Crie uma conta para conversar com os modelos brasileiros." : "Entre para continuar suas conversas."}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

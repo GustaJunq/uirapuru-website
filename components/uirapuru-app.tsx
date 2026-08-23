@@ -144,9 +144,9 @@ export function UirapuruApp() {
   const hasChat = messages.length > 0
   return (
     <main className="relative flex min-h-svh flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex w-full items-center justify-between px-5 py-3 md:px-8">
+      <header className="flex w-full items-center justify-between px-4 py-4 md:px-8 md:py-5">
         <div className="hidden flex-1 md:block" />
-        <nav aria-label="Escolha do modelo" className="model-switch flex items-center rounded-full bg-secondary p-1">
+        <nav aria-label="Escolha do modelo" className="model-switch flex items-center rounded-full bg-secondary p-1.5">
           <button type="button" onClick={() => changeMode("UIRAPURU")} aria-pressed={mode === "UIRAPURU"} className="model-option rounded-full px-4 py-1.5 text-sm font-medium">Uirapuru Chat</button>
           <button type="button" onClick={() => changeMode("JOAO_DE_BARRO")} aria-pressed={mode === "JOAO_DE_BARRO"} className="model-option rounded-full px-4 py-1.5 text-sm font-medium">João-de-barro</button>
         </nav>
@@ -156,8 +156,8 @@ export function UirapuruApp() {
       </header>
 
       {hasChat ? (
-        <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden px-4 pt-6" aria-label="Conversa">
-          <div className="chat-scroll flex flex-1 flex-col gap-5 overflow-y-auto pb-5" aria-live="polite">
+        <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden px-4 pt-8" aria-label="Conversa">
+          <div className="chat-scroll flex flex-1 flex-col gap-6 overflow-y-auto pb-6" aria-live="polite">
             {messages.map((message, index) => (
               <article key={`${message.role}-${index}`} className={message.role === "USER" ? "flex justify-end" : "flex justify-start"}>
                 <div className={message.role === "USER" ? "max-w-[82%] rounded-3xl rounded-br-md bg-secondary px-5 py-3 text-sm leading-relaxed" : "flex max-w-[92%] flex-col gap-3 px-1 py-2 text-sm leading-relaxed text-foreground"}>
@@ -179,7 +179,7 @@ export function UirapuruApp() {
         </section>
       ) : (
         <section className="flex flex-1 flex-col items-center px-4">
-          <div className="flex w-full flex-1 flex-col items-center justify-center gap-7 pb-24">
+          <div className="hero-enter flex w-full flex-1 flex-col items-center justify-center gap-9 pb-24">
             <img src={LOGO_URL} alt="Uirapuru" className="brand-logo h-auto w-52 object-contain" />
             <Composer prompt={prompt} setPrompt={setPrompt} pending={pending} mode={mode} submit={submit} onKeyDown={handleKeyDown} stop={stop} />
             {error && <p role="alert" className="max-w-xl text-center text-sm text-destructive">{error}</p>}
@@ -196,7 +196,7 @@ function Composer({ prompt, setPrompt, pending, mode, submit, onKeyDown, stop, c
   return <form onSubmit={submit} className={compact ? "composer mb-3 flex w-full items-center" : "composer flex w-full max-w-[700px] items-center"}>
     <button type="button" className="flex size-12 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:text-primary" aria-label="Adicionar arquivo" title="Envio de arquivos estará disponível em breve"><Plus className="size-7" /></button>
     <label htmlFor="message" className="sr-only">Sua mensagem</label>
-    <input id="message" value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onKeyDown} disabled={pending} autoComplete="off" placeholder="Manda a boa!" className="h-12 min-w-0 flex-1 bg-transparent px-1 text-base outline-none placeholder:text-muted-foreground disabled:opacity-70" />
+    <input id="message" value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={onKeyDown} disabled={pending} autoComplete="off" placeholder="Manda a boa!" className="h-12 min-w-0 flex-1 bg-transparent px-2 text-[15px] tracking-[-0.01em] outline-none placeholder:text-muted-foreground disabled:opacity-70" />
     <div className="hidden shrink-0 items-center gap-2 pr-3 text-base sm:flex"><span className="text-foreground">{mode === "UIRAPURU" ? "U1" : "J1"}</span><span className="text-muted-foreground">High</span><ChevronDown className="size-5" /></div>
     <button type={pending ? "button" : "submit"} onClick={pending ? stop : undefined} disabled={!pending && !prompt.trim()} className="mr-2 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-45" aria-label={pending ? "Parar geração" : "Enviar mensagem"}>{pending ? <Square className="size-4 fill-current" /> : <ArrowRight className="size-5" />}</button>
   </form>

@@ -1,6 +1,9 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
+import { Geist } from 'next/font/google'
 import './globals.css'
+
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 
 export const metadata: Metadata = {
   title: 'Uirapuru Chat',
@@ -37,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className="bg-background dark">
-      <body className="font-sans antialiased">
+      <body className={`${geist.variable} font-sans antialiased`}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
