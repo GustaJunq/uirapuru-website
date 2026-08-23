@@ -9,6 +9,22 @@ import { Button } from "@/components/ui/button"
 const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/112%20Sem%20T_U00edtulo_20260718173634-C9PesHY7xP0RnzJ15CRlw6qjSsSyVG.png"
 type AuthMode = "login" | "register" | null
 
+function splitThinking(raw: string, complete = false) {
+  const closingTag = "</think>"
+  const closingIndex = raw.indexOf(closingTag)
+
+  if (closingIndex === -1) {
+    return complete
+      ? { thinking: null, content: raw.trim() }
+      : { thinking: raw.replace(/^\s*<think>\s*/i, ""), content: "" }
+  }
+
+  return {
+    thinking: raw.slice(0, closingIndex).replace(/^\s*<think>\s*/i, "").trim(),
+    content: raw.slice(closingIndex + closingTag.length).trimStart(),
+  }
+}
+
 export function UirapuruApp() {
   const [mode, setMode] = useState<Mode>("UIRAPURU")
   const [authMode, setAuthMode] = useState<AuthMode>(null)
@@ -83,13 +99,19 @@ export function UirapuruApp() {
         let streamed = ""
         const final = await api.streamMessage(token, activeConversation.id, text, (piece) => {
           streamed += piece
-          setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, content: streamed } : item))
+          const parsed = splitThinking(streamed)
+          setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
         }, controller.signal)
-        if (!streamed && final) setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, content: final } : item))
+        const completeResponse = streamed || final
+        if (completeResponse) {
+          const parsed = splitThinking(completeResponse, true)
+          setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
+        }
       } else {
         const { agentRunId } = await api.startAgent(token, activeConversation.id, text, controller.signal)
         const output = await pollAgent(agentRunId, controller.signal)
-        setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, content: output } : item))
+        const parsed = splitThinking(output, true)
+        setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
       }
     } catch (cause) {
       if (cause instanceof DOMException && cause.name === "AbortError") {
@@ -138,8 +160,14 @@ export function UirapuruApp() {
           <div className="chat-scroll flex flex-1 flex-col gap-5 overflow-y-auto pb-5" aria-live="polite">
             {messages.map((message, index) => (
               <article key={`${message.role}-${index}`} className={message.role === "USER" ? "flex justify-end" : "flex justify-start"}>
-                <div className={message.role === "USER" ? "max-w-[82%] rounded-3xl rounded-br-md bg-secondary px-5 py-3 text-sm leading-relaxed" : "max-w-[92%] px-1 py-2 text-sm leading-relaxed text-foreground"}>
-                  {message.content || <span className="flex items-center gap-2 text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />{mode === "UIRAPURU" ? "Pensando..." : "João-de-barro está trabalhando..."}</span>}
+                <div className={message.role === "USER" ? "max-w-[82%] rounded-3xl rounded-br-md bg-secondary px-5 py-3 text-sm leading-relaxed" : "flex max-w-[92%] flex-col gap-3 px-1 py-2 text-sm leading-relaxed text-foreground"}>
+                  {message.role === "ASSISTANT" && message.thinking && (
+                    <details className="group rounded-xl border border-border bg-secondary/40 px-4 py-3" open={!message.content}>
+                      <summary className="cursor-pointer font-medium text-muted-foreground">Pensamento</summary>
+                      <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{message.thinking}</p>
+                    </details>
+                  )}
+                  {message.content ? <p className="whitespace-pre-wrap">{message.content}</p> : !message.thinking && <span className="flex items-center gap-2 text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />{mode === "UIRAPURU" ? "Pensando..." : "João-de-barro está trabalhando..."}</span>}
                 </div>
               </article>
             ))}
