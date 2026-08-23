@@ -32,7 +32,6 @@ export function ChatHistory({ open, activeId, conversations, loading, onClose, o
             <div key={conversation.id} className="history-item" data-active={conversation.id === activeId}>
               <button type="button" onClick={() => { onSelectConversation(conversation.id); onClose(); }} className="min-w-0 flex-1 px-3 py-2.5 text-left">
                 <span className="block truncate text-sm font-medium">{conversation.title}</span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">{conversation.mode === "UIRAPURU" ? "Uirapuru" : "João-de-barro"}</span>
               </button>
               <details className="relative mr-1">
                 <summary className="history-icon-button list-none" aria-label={`Ações de ${conversation.title}`}><MoreHorizontal /></summary>
