@@ -50,7 +50,11 @@ export function UirapuruApp() {
     api.me(savedToken).then(({ user: savedUser }) => {
       setToken(savedToken)
       setUser(savedUser)
-    }).catch(() => localStorage.removeItem(TOKEN_KEY))
+    }).catch((cause) => {
+      // Só apaga o token se a API confirmou que ele é inválido (401).
+      // Erros de rede ou a API "acordando" (Render free tier) não podem derrubar a sessão.
+      if (cause instanceof ApiError && cause.status === 401) localStorage.removeItem(TOKEN_KEY)
+    })
   }, [])
 
   useEffect(() => {
@@ -206,12 +210,12 @@ export function UirapuruApp() {
   const hasChat = messages.length > 0
   return (
     <main className="relative flex min-h-svh flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex w-full items-center justify-between px-4 py-4 md:px-8 md:py-5">
+      <header className="flex w-full items-center justify-between gap-2 px-4 py-4 md:px-8 md:py-5">
         <div className="flex flex-1 items-center gap-2">
-          {user && <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} aria-label="Abrir histórico"><PanelLeft className="size-4" /><span className="hidden sm:inline">Histórico</span></Button>}
+          {user && <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} aria-label="Abrir histórico" className="shrink-0"><PanelLeft className="size-4" /><span className="hidden sm:inline">Histórico</span></Button>}
         </div>
-        <div className="flex flex-1 justify-end gap-2">
-          {user ? <><span className="hidden self-center text-sm text-muted-foreground lg:block">@{user.username}</span><Button variant="outline" size="sm" onClick={logout} aria-label="Sair"><LogOut className="size-4" /></Button></> : <><Button variant="outline" size="sm" onClick={() => setAuthMode("register")}>Criar conta</Button><Button onClick={() => setAuthMode("login")} size="sm">Entrar</Button></>}
+        <div className="flex flex-1 shrink-0 justify-end gap-2">
+          {user ? <><span className="hidden self-center text-sm text-muted-foreground lg:block">@{user.username}</span><Button variant="outline" size="sm" onClick={logout} aria-label="Sair" className="shrink-0"><LogOut className="size-4" /></Button></> : <><Button variant="outline" size="sm" onClick={() => setAuthMode("register")} className="shrink-0">Criar conta</Button><Button onClick={() => setAuthMode("login")} size="sm" className="shrink-0">Entrar</Button></>}
         </div>
       </header>
 
