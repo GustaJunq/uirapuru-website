@@ -49,7 +49,10 @@ export const api = {
   login: (data: { email: string; password: string }) => request<AuthResult>("/api/auth/login", { method: "POST", body: JSON.stringify(data) }),
   me: (token: string) => request<{ user: User }>("/api/auth/me", {}, token),
   createConversation: (token: string, data: { title?: string }) => request<Conversation>("/api/chat/conversations", { method: "POST", body: JSON.stringify(data) }, token),
+  listConversations: (token: string) => request<Conversation[]>("/api/chat/conversations", {}, token),
   getConversation: (token: string, id: string) => request<Conversation>(`/api/chat/conversations/${id}`, {}, token),
+  renameConversation: (token: string, id: string, title: string) => request<Conversation>(`/api/chat/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) }, token),
+  deleteConversation: (token: string, id: string) => request<void>(`/api/chat/conversations/${id}`, { method: "DELETE" }, token),
   async streamMessage(
     token: string,
     id: string,
