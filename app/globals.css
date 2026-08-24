@@ -174,8 +174,6 @@
 }
 
 @media (max-width: 767px) {
-  header { flex-wrap: wrap; gap: .75rem; }
-  header nav { order: 2; width: 100%; }
   .brand-logo { width: 11rem; }
 }
 
