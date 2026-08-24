@@ -1,8 +1,8 @@
 "use client"
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react"
-import { ArrowRight, ChevronDown, LoaderCircle, LogOut, Plus, Square } from "lucide-react"
-import { api, ApiError, type ChatMessage, type Conversation, type User } from "@/lib/uirapuru-api"
+import { ArrowRight, ChevronDown, LoaderCircle, LogOut, Plus, Search, Square } from "lucide-react"
+import { api, ApiError, type ChatMessage, type Conversation, type ToolCall, type User } from "@/lib/uirapuru-api"
 import { AuthDialog } from "@/components/auth-dialog"
 import { Button } from "@/components/ui/button"
 
@@ -80,12 +80,28 @@ export function UirapuruApp() {
         setConversation(activeConversation)
         setMessages([])
       }
-      setMessages((current) => [...current, { role: "USER", content: text }, { role: "ASSISTANT", content: "" }])
+      setMessages((current) => [...current, { role: "USER", content: text }, { role: "ASSISTANT", content: "", toolCalls: [] }])
       let streamed = ""
-      const final = await api.streamMessage(token, activeConversation.id, text, (piece) => {
-        streamed += piece
-        const parsed = splitThinking(streamed)
-        setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
+      const final = await api.streamMessage(token, activeConversation.id, text, {
+        onToken: (piece) => {
+          streamed += piece
+          const parsed = splitThinking(streamed)
+          setMessages((current) => current.map((item, index) => index === current.length - 1 ? { ...item, ...parsed } : item))
+        },
+        onToolCall: (toolCall) => {
+          setMessages((current) => current.map((item, index) => {
+            if (index !== current.length - 1) return item
+            const toolCalls = [...(item.toolCalls || []), { id: toolCall.id, name: toolCall.name, args: toolCall.args, status: "calling" as const }]
+            return { ...item, toolCalls }
+          }))
+        },
+        onToolResult: (toolResult) => {
+          setMessages((current) => current.map((item, index) => {
+            if (index !== current.length - 1) return item
+            const toolCalls = (item.toolCalls || []).map((call) => call.id === toolResult.id ? { ...call, result: toolResult.result, status: "done" as const } : call)
+            return { ...item, toolCalls }
+          }))
+        },
       }, controller.signal)
       const completeResponse = streamed || final
       if (completeResponse) {
@@ -129,13 +145,18 @@ export function UirapuruApp() {
             {messages.map((message, index) => (
               <article key={`${message.role}-${index}`} className={message.role === "USER" ? "flex justify-end" : "flex justify-start"}>
                 <div className={message.role === "USER" ? "max-w-[82%] rounded-3xl rounded-br-md bg-secondary px-5 py-3 text-sm leading-relaxed" : "flex max-w-[92%] flex-col gap-3 px-1 py-2 text-sm leading-relaxed"}>
+                  {message.role === "ASSISTANT" && message.toolCalls && message.toolCalls.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      {message.toolCalls.map((call) => <ToolCallCard key={call.id} call={call} />)}
+                    </div>
+                  )}
                   {message.role === "ASSISTANT" && message.thinking && (
                     <details className="group rounded-xl border border-border bg-secondary/40 px-4 py-3" open={!message.content}>
                       <summary className="cursor-pointer font-medium text-muted-foreground">Pensamento</summary>
                       <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{message.thinking}</p>
                     </details>
                   )}
-                  {message.content ? <p className="whitespace-pre-wrap">{message.content}</p> : !message.thinking && <span className="flex items-center gap-2 text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />Gerando...</span>}
+                  {message.content ? <p className="whitespace-pre-wrap">{message.content}</p> : !message.thinking && !(message.toolCalls && message.toolCalls.length > 0) && <span className="flex items-center gap-2 text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />Gerando...</span>}
                 </div>
               </article>
             ))}
@@ -161,6 +182,31 @@ export function UirapuruApp() {
       )}
       <AuthDialog mode={authMode} onOpenChange={(open) => !open && setAuthMode(null)} onSwitchMode={setAuthMode} onAuthenticated={handleAuthenticated} />
     </main>
+  )
+}
+
+function ToolCallCard({ call }: { call: ToolCall }) {
+  const query = typeof call.args?.query === "string" ? call.args.query : null
+  const result = call.result as { error?: string; results?: { title?: string | null; link?: string | null }[] } | undefined
+  const items = result?.results?.slice(0, 4) || []
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border bg-secondary/40 px-4 py-3">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        {call.status === "calling" ? <LoaderCircle className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
+        <span className="font-medium">{call.status === "calling" ? "Pesquisando" : "Pesquisou"}{query ? `: "${query}"` : ""}</span>
+      </div>
+      {call.status === "done" && result?.error && <p className="text-xs text-destructive">{result.error}</p>}
+      {call.status === "done" && items.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {items.map((item, index) => (
+            <li key={index} className="truncate text-xs text-muted-foreground">
+              {item.link ? <a href={item.link} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-foreground">{item.title || item.link}</a> : (item.title || "")}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
