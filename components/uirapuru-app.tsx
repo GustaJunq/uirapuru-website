@@ -1,10 +1,13 @@
 "use client"
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react"
-import { ArrowRight, ChevronDown, LoaderCircle, LogOut, Plus, Search, Square } from "lucide-react"
+import { ArrowRight, ChevronDown, LoaderCircle, LogOut, PanelLeft, Plus, Search, Square } from "lucide-react"
 import { api, ApiError, type ChatMessage, type Conversation, type ToolCall, type User } from "@/lib/uirapuru-api"
 import { AuthDialog } from "@/components/auth-dialog"
+import { ChatHistory } from "@/components/chat-history"
 import { Button } from "@/components/ui/button"
+
+const TOKEN_KEY = "uirapuru_token"
 
 const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/112%20Sem%20T_U00edtulo_20260718173634-C9PesHY7xP0RnzJ15CRlw6qjSsSyVG.png"
 type AuthMode = "login" | "register" | null
@@ -34,34 +37,103 @@ export function UirapuruApp() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    const savedToken = sessionStorage.getItem("uirapuru_token")
+    // localStorage (em vez de sessionStorage) para a sessão persistir entre reinícios do navegador
+    const savedToken = localStorage.getItem(TOKEN_KEY)
     if (!savedToken) return
     api.me(savedToken).then(({ user: savedUser }) => {
       setToken(savedToken)
       setUser(savedUser)
-    }).catch(() => sessionStorage.removeItem("uirapuru_token"))
+    }).catch(() => localStorage.removeItem(TOKEN_KEY))
   }, [])
+
+  useEffect(() => {
+    if (!token) { setConversations([]); return }
+    setHistoryLoading(true)
+    api.listConversations(token)
+      .then(setConversations)
+      .catch(() => {})
+      .finally(() => setHistoryLoading(false))
+  }, [token])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, pending])
   useEffect(() => () => abortRef.current?.abort(), [])
 
+  function refreshHistory(currentToken: string) {
+    api.listConversations(currentToken).then(setConversations).catch(() => {})
+  }
+
   function handleAuthenticated(nextUser: User, nextToken: string) {
-    sessionStorage.setItem("uirapuru_token", nextToken)
+    localStorage.setItem(TOKEN_KEY, nextToken)
     setUser(nextUser)
     setToken(nextToken)
   }
 
   function logout() {
     abortRef.current?.abort()
-    sessionStorage.removeItem("uirapuru_token")
+    localStorage.removeItem(TOKEN_KEY)
     setUser(null)
     setToken("")
     setConversation(null)
     setMessages([])
+    setConversations([])
+    setHistoryOpen(false)
+  }
+
+  function startNewConversation() {
+    abortRef.current?.abort()
+    setConversation(null)
+    setMessages([])
+    setError("")
+    setHistoryOpen(false)
+  }
+
+  async function openConversation(id: string) {
+    if (!token) return
+    if (conversation?.id === id) { setHistoryOpen(false); return }
+    abortRef.current?.abort()
+    setError("")
+    try {
+      const full = await api.getConversation(token, id)
+      setConversation(full)
+      setMessages(full.messages || [])
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível abrir essa conversa.")
+      if (cause instanceof ApiError && cause.status === 401) logout()
+    } finally {
+      setHistoryOpen(false)
+    }
+  }
+
+  async function renameConversationById(target: Conversation) {
+    if (!token) return
+    const nextTitle = window.prompt("Novo título da conversa:", target.title)?.trim()
+    if (!nextTitle || nextTitle === target.title) return
+    try {
+      const updated = await api.renameConversation(token, target.id, nextTitle)
+      setConversations((current) => current.map((item) => item.id === updated.id ? updated : item))
+      setConversation((current) => current?.id === updated.id ? { ...current, title: updated.title } : current)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível renomear a conversa.")
+    }
+  }
+
+  async function deleteConversationById(target: Conversation) {
+    if (!token) return
+    if (!window.confirm(`Excluir "${target.title}"? Essa ação não pode ser desfeita.`)) return
+    try {
+      await api.deleteConversation(token, target.id)
+      setConversations((current) => current.filter((item) => item.id !== target.id))
+      if (conversation?.id === target.id) { setConversation(null); setMessages([]) }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível excluir a conversa.")
+    }
   }
 
   async function sendMessage(messageText: string) {
@@ -79,6 +151,7 @@ export function UirapuruApp() {
         activeConversation = await api.createConversation(token, { title: text.slice(0, 54) })
         setConversation(activeConversation)
         setMessages([])
+        refreshHistory(token)
       }
       setMessages((current) => [...current, { role: "USER", content: text }, { role: "ASSISTANT", content: "", toolCalls: [] }])
       let streamed = ""
@@ -120,6 +193,7 @@ export function UirapuruApp() {
     } finally {
       setPending(false)
       abortRef.current = null
+      refreshHistory(token)
     }
   }
 
@@ -133,7 +207,9 @@ export function UirapuruApp() {
   return (
     <main className="relative flex min-h-svh flex-col overflow-hidden bg-background text-foreground">
       <header className="flex w-full items-center justify-between px-4 py-4 md:px-8 md:py-5">
-        <div className="hidden flex-1 md:block" />
+        <div className="flex flex-1 items-center gap-2">
+          {user && <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} aria-label="Abrir histórico"><PanelLeft className="size-4" /><span className="hidden sm:inline">Histórico</span></Button>}
+        </div>
         <div className="flex flex-1 justify-end gap-2">
           {user ? <><span className="hidden self-center text-sm text-muted-foreground lg:block">@{user.username}</span><Button variant="outline" size="sm" onClick={logout} aria-label="Sair"><LogOut className="size-4" /></Button></> : <><Button variant="outline" size="sm" onClick={() => setAuthMode("register")}>Criar conta</Button><Button onClick={() => setAuthMode("login")} size="sm">Entrar</Button></>}
         </div>
@@ -181,6 +257,19 @@ export function UirapuruApp() {
         </section>
       )}
       <AuthDialog mode={authMode} onOpenChange={(open) => !open && setAuthMode(null)} onSwitchMode={setAuthMode} onAuthenticated={handleAuthenticated} />
+      {user && (
+        <ChatHistory
+          open={historyOpen}
+          activeId={conversation?.id}
+          conversations={conversations}
+          loading={historyLoading}
+          onClose={() => setHistoryOpen(false)}
+          onRename={renameConversationById}
+          onDelete={deleteConversationById}
+          onSelectConversation={openConversation}
+          onNewConversation={startNewConversation}
+        />
+      )}
     </main>
   )
 }
