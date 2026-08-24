@@ -1,7 +1,8 @@
 const API_URL = "https://uirapuru-api.onrender.com"
 
 export type User = { id: string; email: string; username: string; createdAt: string }
-export type ChatMessage = { id?: string; role: "USER" | "ASSISTANT" | "SYSTEM"; content: string; thinking?: string | null; createdAt?: string }
+export type ToolCall = { id: string; name: string; args?: Record<string, unknown>; result?: unknown; status: "calling" | "done" }
+export type ChatMessage = { id?: string; role: "USER" | "ASSISTANT" | "SYSTEM"; content: string; thinking?: string | null; toolCalls?: ToolCall[]; createdAt?: string }
 export type Conversation = { id: string; title: string; messages?: ChatMessage[] }
 
 type AuthResult = { user: User; token: string }
@@ -49,7 +50,17 @@ export const api = {
   me: (token: string) => request<{ user: User }>("/api/auth/me", {}, token),
   createConversation: (token: string, data: { title?: string }) => request<Conversation>("/api/chat/conversations", { method: "POST", body: JSON.stringify(data) }, token),
   getConversation: (token: string, id: string) => request<Conversation>(`/api/chat/conversations/${id}`, {}, token),
-  async streamMessage(token: string, id: string, message: string, onToken: (token: string) => void, signal?: AbortSignal) {
+  async streamMessage(
+    token: string,
+    id: string,
+    message: string,
+    handlers: {
+      onToken?: (token: string) => void
+      onToolCall?: (toolCall: { id: string; name: string; args?: Record<string, unknown> }) => void
+      onToolResult?: (toolResult: { id: string; name: string; result?: unknown }) => void
+    },
+    signal?: AbortSignal,
+  ) {
     const response = await fetch(`${API_URL}/api/chat/conversations/${id}/messages`, {
       method: "POST",
       signal,
@@ -74,8 +85,16 @@ export const api = {
       for (const event of events) {
         const line = event.split("\n").find((item) => item.startsWith("data:"))
         if (!line) continue
-        const data = JSON.parse(line.slice(5).trim()) as { token?: string; done?: boolean; answer?: string }
-        if (data.token) onToken(data.token)
+        const data = JSON.parse(line.slice(5).trim()) as {
+          token?: string
+          done?: boolean
+          answer?: string
+          toolCall?: { id: string; name: string; args?: Record<string, unknown> }
+          toolResult?: { id: string; name: string; result?: unknown }
+        }
+        if (data.token) handlers.onToken?.(data.token)
+        if (data.toolCall) handlers.onToolCall?.(data.toolCall)
+        if (data.toolResult) handlers.onToolResult?.(data.toolResult)
         if (data.done && data.answer) finalAnswer = data.answer
       }
     }
