@@ -1,3 +1,1 @@
-# As rotas dinâmicas são convertidas para query strings porque o site usa exportação estática.
-/c/* /c?slug=:splat 200
-/chat/* /chat?id=:splat 200
+/* /index.html 200

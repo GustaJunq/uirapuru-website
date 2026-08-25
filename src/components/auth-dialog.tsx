@@ -1,5 +1,3 @@
-"use client"
-
 import { FormEvent, useState } from "react"
 import { LoaderCircle } from "lucide-react"
 import { api, type User } from "@/lib/uirapuru-api"
@@ -47,7 +45,7 @@ export function AuthDialog({ mode, onOpenChange, onSwitchMode, onAuthenticated }
             <Field><FieldLabel htmlFor="password">Senha</FieldLabel><Input id="password" name="password" type="password" autoComplete={isRegister ? "new-password" : "current-password"} minLength={6} required placeholder="••••••••" /></Field>
             {error && <Field data-invalid><FieldError>{error}</FieldError></Field>}
             <Button type="submit" disabled={pending} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              {pending && <LoaderCircle data-icon="inline-start" className="animate-spin" />}
+              {pending && <LoaderCircle className="size-4 animate-spin" />}
               {pending ? "Conectando..." : isRegister ? "Criar conta" : "Entrar"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">

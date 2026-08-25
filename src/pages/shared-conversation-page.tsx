@@ -1,11 +1,8 @@
-"use client"
-
-import { useSearchParams } from "next/navigation"
+import { useParams } from "react-router-dom"
 import { SharedConversation } from "@/components/shared-conversation"
 
-export function SharedConversationPage() {
-  const searchParams = useSearchParams()
-  const slug = searchParams.get("slug")
+export default function SharedConversationPage() {
+  const { slug } = useParams<{ slug?: string }>()
 
   if (!slug) {
     return (

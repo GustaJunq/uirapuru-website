@@ -1,5 +1,3 @@
-"use client"
-
 import { useEffect, useState } from "react"
 import { LoaderCircle } from "lucide-react"
 import { api, type PublicConversation } from "@/lib/uirapuru-api"
