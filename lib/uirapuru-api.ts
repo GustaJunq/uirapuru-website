@@ -3,7 +3,8 @@ const API_URL = "https://uirapuru-api.onrender.com"
 export type User = { id: string; email: string; username: string; createdAt: string }
 export type ToolCall = { id: string; name: string; args?: Record<string, unknown>; result?: unknown; status: "calling" | "done" }
 export type ChatMessage = { id?: string; role: "USER" | "ASSISTANT" | "SYSTEM"; content: string; thinking?: string | null; toolCalls?: ToolCall[]; createdAt?: string }
-export type Conversation = { id: string; title: string; messages?: ChatMessage[] }
+export type Conversation = { id: string; title: string; messages?: ChatMessage[]; shareSlug?: string | null }
+export type PublicConversation = { id: string; title: string; messages: ChatMessage[]; createdAt: string; updatedAt: string }
 
 type AuthResult = { user: User; token: string }
 
@@ -53,6 +54,9 @@ export const api = {
   getConversation: (token: string, id: string) => request<Conversation>(`/api/chat/conversations/${id}`, {}, token),
   renameConversation: (token: string, id: string, title: string) => request<Conversation>(`/api/chat/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) }, token),
   deleteConversation: (token: string, id: string) => request<void>(`/api/chat/conversations/${id}`, { method: "DELETE" }, token),
+  shareConversation: (token: string, id: string) => request<{ shareSlug: string }>(`/api/chat/conversations/${id}/share`, { method: "POST" }, token),
+  unshareConversation: (token: string, id: string) => request<void>(`/api/chat/conversations/${id}/share`, { method: "DELETE" }, token),
+  getPublicConversation: (slug: string) => request<PublicConversation>(`/api/public/shared/${slug}`),
   async streamMessage(
     token: string,
     id: string,
