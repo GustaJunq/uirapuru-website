@@ -1,7 +1,8 @@
 "use client"
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react"
-import { ArrowRight, ChevronDown, LoaderCircle, LogOut, PanelLeft, Plus, Search, Square } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ArrowRight, Check, ChevronDown, Copy, LoaderCircle, LogOut, PanelLeft, Plus, Search, Share2, Square } from "lucide-react"
 import { api, ApiError, type ChatMessage, type Conversation, type ToolCall, type User } from "@/lib/uirapuru-api"
 import { AuthDialog } from "@/components/auth-dialog"
 import { ChatHistory } from "@/components/chat-history"
@@ -28,8 +29,10 @@ function splitThinking(raw: string, complete = false) {
   }
 }
 
-export function UirapuruApp() {
+export function UirapuruApp({ initialConversationId }: { initialConversationId?: string } = {}) {
+  const router = useRouter()
   const [authMode, setAuthMode] = useState<AuthMode>(null)
+  const [authChecked, setAuthChecked] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState("")
   const [prompt, setPrompt] = useState("")
@@ -40,13 +43,16 @@ export function UirapuruApp() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [shareUrl, setShareUrl] = useState("")
+  const [sharing, setSharing] = useState(false)
+  const [copied, setCopied] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     // localStorage (em vez de sessionStorage) para a sessão persistir entre reinícios do navegador
     const savedToken = localStorage.getItem(TOKEN_KEY)
-    if (!savedToken) return
+    if (!savedToken) { setAuthChecked(true); return }
     api.me(savedToken).then(({ user: savedUser }) => {
       setToken(savedToken)
       setUser(savedUser)
@@ -54,7 +60,7 @@ export function UirapuruApp() {
       // Só apaga o token se a API confirmou que ele é inválido (401).
       // Erros de rede ou a API "acordando" (Render free tier) não podem derrubar a sessão.
       if (cause instanceof ApiError && cause.status === 401) localStorage.removeItem(TOKEN_KEY)
-    })
+    }).finally(() => setAuthChecked(true))
   }, [])
 
   useEffect(() => {
@@ -66,8 +72,18 @@ export function UirapuruApp() {
       .finally(() => setHistoryLoading(false))
   }, [token])
 
+  // Abre a conversa da URL (/chat/[id]) assim que soubermos se o usuário está logado
+  useEffect(() => {
+    if (!initialConversationId || !authChecked) return
+    if (conversation?.id === initialConversationId) return
+    if (!token) { setAuthMode("login"); return }
+    openConversation(initialConversationId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialConversationId, authChecked, token])
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, pending])
   useEffect(() => () => abortRef.current?.abort(), [])
+  useEffect(() => { if (!shareUrl) return; setCopied(false) }, [shareUrl])
 
   function refreshHistory(currentToken: string) {
     api.listConversations(currentToken).then(setConversations).catch(() => {})
@@ -88,6 +104,8 @@ export function UirapuruApp() {
     setMessages([])
     setConversations([])
     setHistoryOpen(false)
+    setShareUrl("")
+    router.push("/")
   }
 
   function startNewConversation() {
@@ -96,6 +114,8 @@ export function UirapuruApp() {
     setMessages([])
     setError("")
     setHistoryOpen(false)
+    setShareUrl("")
+    router.push("/")
   }
 
   async function openConversation(id: string) {
@@ -103,10 +123,12 @@ export function UirapuruApp() {
     if (conversation?.id === id) { setHistoryOpen(false); return }
     abortRef.current?.abort()
     setError("")
+    setShareUrl("")
     try {
       const full = await api.getConversation(token, id)
       setConversation(full)
       setMessages(full.messages || [])
+      router.push(`/chat/${id}`)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível abrir essa conversa.")
       if (cause instanceof ApiError && cause.status === 401) logout()
@@ -134,9 +156,35 @@ export function UirapuruApp() {
     try {
       await api.deleteConversation(token, target.id)
       setConversations((current) => current.filter((item) => item.id !== target.id))
-      if (conversation?.id === target.id) { setConversation(null); setMessages([]) }
+      if (conversation?.id === target.id) {
+        setConversation(null)
+        setMessages([])
+        setShareUrl("")
+        router.push("/")
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível excluir a conversa.")
+    }
+  }
+
+  async function shareCurrentConversation() {
+    if (!token || !conversation) return
+    setSharing(true)
+    setError("")
+    try {
+      const { shareSlug } = await api.shareConversation(token, conversation.id)
+      const url = `${window.location.origin}/c/${shareSlug}`
+      setShareUrl(url)
+      try {
+        await navigator.clipboard.writeText(url)
+        setCopied(true)
+      } catch {
+        // clipboard pode não estar disponível (ex: http, permissão negada) - o link ainda fica visível pra copiar manualmente
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível gerar o link de compartilhamento.")
+    } finally {
+      setSharing(false)
     }
   }
 
@@ -156,6 +204,7 @@ export function UirapuruApp() {
         setConversation(activeConversation)
         setMessages([])
         refreshHistory(token)
+        router.push(`/chat/${activeConversation.id}`)
       }
       setMessages((current) => [...current, { role: "USER", content: text }, { role: "ASSISTANT", content: "", toolCalls: [] }])
       let streamed = ""
@@ -213,11 +262,27 @@ export function UirapuruApp() {
       <header className="flex w-full items-center justify-between gap-2 px-4 py-4 md:px-8 md:py-5">
         <div className="flex flex-1 items-center gap-2">
           {user && <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} aria-label="Abrir histórico" className="shrink-0"><PanelLeft className="size-4" /><span className="hidden sm:inline">Histórico</span></Button>}
+          {user && conversation && (
+            <Button variant="outline" size="sm" onClick={shareCurrentConversation} disabled={sharing} aria-label="Compartilhar conversa" className="shrink-0">
+              {sharing ? <LoaderCircle className="size-4 animate-spin" /> : <Share2 className="size-4" />}
+              <span className="hidden sm:inline">Compartilhar</span>
+            </Button>
+          )}
         </div>
         <div className="flex flex-1 shrink-0 justify-end gap-2">
           {user ? <><span className="hidden self-center text-sm text-muted-foreground lg:block">@{user.username}</span><Button variant="outline" size="sm" onClick={logout} aria-label="Sair" className="shrink-0"><LogOut className="size-4" /></Button></> : <><Button variant="outline" size="sm" onClick={() => setAuthMode("register")} className="shrink-0">Criar conta</Button><Button onClick={() => setAuthMode("login")} size="sm" className="shrink-0">Entrar</Button></>}
         </div>
       </header>
+      {shareUrl && (
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-4 pb-2 text-xs text-muted-foreground">
+          <span className="truncate">{copied ? "Link copiado! " : ""}Qualquer pessoa com esse link pode ver esta conversa (não listada publicamente):</span>
+          <a href={shareUrl} target="_blank" rel="noreferrer" className="shrink-0 truncate underline underline-offset-2 hover:text-foreground">{shareUrl}</a>
+          <button type="button" onClick={async () => { await navigator.clipboard.writeText(shareUrl).catch(() => {}); setCopied(true) }} className="history-icon-button shrink-0" aria-label="Copiar link">
+            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          </button>
+          <button type="button" onClick={() => setShareUrl("")} className="history-icon-button shrink-0" aria-label="Fechar"><ChevronDown className="size-3.5 rotate-180" /></button>
+        </div>
+      )}
 
       {hasChat ? (
         <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden px-4 pt-8" aria-label="Conversa">
