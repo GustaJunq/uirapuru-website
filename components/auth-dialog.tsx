@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 
 type AuthMode = "login" | "register"
 
-export function AuthDialog({ mode, onOpenChange, onSwitchMode, onAuthenticated }: { mode: AuthMode | null; onOpenChange: (open: boolean) => void; onSwitchMode: (mode: AuthMode) => void; onAuthenticated: (user: User, token: string) => void }) {
+export function AuthDialog({ mode, onOpenChange, onSwitchMode, onAuthenticated }: { mode: AuthMode | null; onOpenChange: (open: boolean) => void; onSwitchMode: (mode: AuthMode) => void; onAuthenticated: (user: User) => void }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
 
@@ -23,7 +23,7 @@ export function AuthDialog({ mode, onOpenChange, onSwitchMode, onAuthenticated }
       const result = mode === "register"
         ? await api.register({ email: String(data.get("email")), username: String(data.get("username")), password: String(data.get("password")) })
         : await api.login({ email: String(data.get("email")), password: String(data.get("password")) })
-      onAuthenticated(result.user, result.token)
+      onAuthenticated(result.user)
       onOpenChange(false)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível autenticar.")
