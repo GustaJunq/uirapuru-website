@@ -117,7 +117,7 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
       const full = await api.getConversation(id)
       setConversation(full)
       setMessages(full.messages || [])
-      router.push(`/chat/${id}`)
+      router.push(`/chat?id=${encodeURIComponent(id)}`)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível abrir essa conversa.")
       if (cause instanceof ApiError && cause.status === 401) logout()
@@ -162,7 +162,7 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
     setError("")
     try {
       const { shareSlug } = await api.shareConversation(conversation.id)
-      const url = `${window.location.origin}/c/${shareSlug}`
+      const url = `${window.location.origin}/c?slug=${encodeURIComponent(shareSlug)}`
       setShareUrl(url)
       try {
         await navigator.clipboard.writeText(url)
@@ -193,7 +193,7 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
         setConversation(activeConversation)
         setMessages([])
         refreshHistory()
-        router.push(`/chat/${activeConversation.id}`)
+        router.push(`/chat?id=${encodeURIComponent(activeConversation.id)}`)
       }
       setMessages((current) => [...current, { role: "USER", content: text }, { role: "ASSISTANT", content: "", toolCalls: [] }])
       let streamed = ""
@@ -325,7 +325,6 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
           onRename={renameConversationById}
           onDelete={deleteConversationById}
           onSelectConversation={openConversation}
-          onNewConversation={startNewConversation}
         />
       )}
     </main>
