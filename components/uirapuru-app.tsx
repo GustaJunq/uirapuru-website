@@ -8,8 +8,6 @@ import { AuthDialog } from "@/components/auth-dialog"
 import { ChatHistory } from "@/components/chat-history"
 import { Button } from "@/components/ui/button"
 
-const TOKEN_KEY = "uirapuru_token"
-
 const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/112%20Sem%20T_U00edtulo_20260718173634-C9PesHY7xP0RnzJ15CRlw6qjSsSyVG.png"
 type AuthMode = "login" | "register" | null
 
@@ -34,7 +32,6 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
   const [authMode, setAuthMode] = useState<AuthMode>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState("")
   const [prompt, setPrompt] = useState("")
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -50,56 +47,48 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
   const bottomRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    // localStorage (em vez de sessionStorage) para a sessão persistir entre reinícios do navegador
-    const savedToken = localStorage.getItem(TOKEN_KEY)
-    if (!savedToken) { setAuthChecked(true); return }
-    api.me(savedToken).then(({ user: savedUser }) => {
-      setToken(savedToken)
+    // A sessão vive num cookie httpOnly (o JS não consegue ler nem escrever
+    // nele) - "credentials: include" dentro de api.me() já manda o cookie
+    // automaticamente se ele existir. Isso só confirma se tem sessão válida.
+    api.me().then(({ user: savedUser }) => {
       setUser(savedUser)
-    }).catch((cause) => {
-      // Só apaga o token se a API confirmou que ele é inválido (401).
-      // Erros de rede ou a API "acordando" (Render free tier) não podem derrubar a sessão.
-      if (cause instanceof ApiError && cause.status === 401) localStorage.removeItem(TOKEN_KEY)
-    }).finally(() => setAuthChecked(true))
+    }).catch(() => {}).finally(() => setAuthChecked(true))
   }, [])
 
   useEffect(() => {
-    if (!token) { setConversations([]); return }
+    if (!user) { setConversations([]); return }
     setHistoryLoading(true)
-    api.listConversations(token)
+    api.listConversations()
       .then(setConversations)
       .catch(() => {})
       .finally(() => setHistoryLoading(false))
-  }, [token])
+  }, [user])
 
   // Abre a conversa da URL (/chat/[id]) assim que soubermos se o usuário está logado
   useEffect(() => {
     if (!initialConversationId || !authChecked) return
     if (conversation?.id === initialConversationId) return
-    if (!token) { setAuthMode("login"); return }
+    if (!user) { setAuthMode("login"); return }
     openConversation(initialConversationId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialConversationId, authChecked, token])
+  }, [initialConversationId, authChecked, user])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, pending])
   useEffect(() => () => abortRef.current?.abort(), [])
   useEffect(() => { if (!shareUrl) return; setCopied(false) }, [shareUrl])
 
-  function refreshHistory(currentToken: string) {
-    api.listConversations(currentToken).then(setConversations).catch(() => {})
+  function refreshHistory() {
+    api.listConversations().then(setConversations).catch(() => {})
   }
 
-  function handleAuthenticated(nextUser: User, nextToken: string) {
-    localStorage.setItem(TOKEN_KEY, nextToken)
+  function handleAuthenticated(nextUser: User) {
     setUser(nextUser)
-    setToken(nextToken)
   }
 
   function logout() {
     abortRef.current?.abort()
-    localStorage.removeItem(TOKEN_KEY)
+    api.logout().catch(() => {}) // limpa o cookie no servidor; segue o fluxo mesmo se falhar
     setUser(null)
-    setToken("")
     setConversation(null)
     setMessages([])
     setConversations([])
@@ -119,13 +108,13 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
   }
 
   async function openConversation(id: string) {
-    if (!token) return
+    if (!user) return
     if (conversation?.id === id) { setHistoryOpen(false); return }
     abortRef.current?.abort()
     setError("")
     setShareUrl("")
     try {
-      const full = await api.getConversation(token, id)
+      const full = await api.getConversation(id)
       setConversation(full)
       setMessages(full.messages || [])
       router.push(`/chat/${id}`)
@@ -138,11 +127,11 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
   }
 
   async function renameConversationById(target: Conversation) {
-    if (!token) return
+    if (!user) return
     const nextTitle = window.prompt("Novo título da conversa:", target.title)?.trim()
     if (!nextTitle || nextTitle === target.title) return
     try {
-      const updated = await api.renameConversation(token, target.id, nextTitle)
+      const updated = await api.renameConversation(target.id, nextTitle)
       setConversations((current) => current.map((item) => item.id === updated.id ? updated : item))
       setConversation((current) => current?.id === updated.id ? { ...current, title: updated.title } : current)
     } catch (cause) {
@@ -151,10 +140,10 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
   }
 
   async function deleteConversationById(target: Conversation) {
-    if (!token) return
+    if (!user) return
     if (!window.confirm(`Excluir "${target.title}"? Essa ação não pode ser desfeita.`)) return
     try {
-      await api.deleteConversation(token, target.id)
+      await api.deleteConversation(target.id)
       setConversations((current) => current.filter((item) => item.id !== target.id))
       if (conversation?.id === target.id) {
         setConversation(null)
@@ -168,11 +157,11 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
   }
 
   async function shareCurrentConversation() {
-    if (!token || !conversation) return
+    if (!user || !conversation) return
     setSharing(true)
     setError("")
     try {
-      const { shareSlug } = await api.shareConversation(token, conversation.id)
+      const { shareSlug } = await api.shareConversation(conversation.id)
       const url = `${window.location.origin}/c/${shareSlug}`
       setShareUrl(url)
       try {
@@ -189,7 +178,7 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
   }
 
   async function sendMessage(messageText: string) {
-    if (!token) { setAuthMode("login"); return }
+    if (!user) { setAuthMode("login"); return }
     if (pending || !messageText.trim()) return
     const text = messageText.trim()
     setPrompt("")
@@ -200,15 +189,15 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
     let activeConversation = conversation
     try {
       if (!activeConversation) {
-        activeConversation = await api.createConversation(token, { title: text.slice(0, 54) })
+        activeConversation = await api.createConversation({ title: text.slice(0, 54) })
         setConversation(activeConversation)
         setMessages([])
-        refreshHistory(token)
+        refreshHistory()
         router.push(`/chat/${activeConversation.id}`)
       }
       setMessages((current) => [...current, { role: "USER", content: text }, { role: "ASSISTANT", content: "", toolCalls: [] }])
       let streamed = ""
-      const final = await api.streamMessage(token, activeConversation.id, text, {
+      const final = await api.streamMessage(activeConversation.id, text, {
         onToken: (piece) => {
           streamed += piece
           const parsed = splitThinking(streamed)
@@ -246,7 +235,7 @@ export function UirapuruApp({ initialConversationId }: { initialConversationId?:
     } finally {
       setPending(false)
       abortRef.current = null
-      refreshHistory(token)
+      refreshHistory()
     }
   }
 
