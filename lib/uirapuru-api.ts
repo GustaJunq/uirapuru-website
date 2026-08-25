@@ -6,7 +6,7 @@ export type ChatMessage = { id?: string; role: "USER" | "ASSISTANT" | "SYSTEM"; 
 export type Conversation = { id: string; title: string; messages?: ChatMessage[]; shareSlug?: string | null }
 export type PublicConversation = { id: string; title: string; messages: ChatMessage[]; createdAt: string; updatedAt: string }
 
-type AuthResult = { user: User; token: string }
+type AuthResult = { user: User }
 
 export class ApiError extends Error {
   constructor(message: string, public status = 0) {
@@ -24,15 +24,19 @@ async function parseError(response: Response) {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, token?: string, signal?: AbortSignal): Promise<T> {
+// "credentials: include" é o que faz o navegador mandar/aceitar o cookie
+// httpOnly de sessão em requisições cross-site (site e API em domínios
+// diferentes). O token nunca passa pelo JS - o cookie é setado e lido só
+// pelo servidor.
+async function request<T>(path: string, init: RequestInit = {}, signal?: AbortSignal): Promise<T> {
   let response: Response
   try {
     response = await fetch(`${API_URL}${path}`, {
       ...init,
       signal,
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...init.headers,
       },
     })
@@ -48,17 +52,17 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string, 
 export const api = {
   register: (data: { email: string; username: string; password: string }) => request<AuthResult>("/api/auth/register", { method: "POST", body: JSON.stringify(data) }),
   login: (data: { email: string; password: string }) => request<AuthResult>("/api/auth/login", { method: "POST", body: JSON.stringify(data) }),
-  me: (token: string) => request<{ user: User }>("/api/auth/me", {}, token),
-  createConversation: (token: string, data: { title?: string }) => request<Conversation>("/api/chat/conversations", { method: "POST", body: JSON.stringify(data) }, token),
-  listConversations: (token: string) => request<Conversation[]>("/api/chat/conversations", {}, token),
-  getConversation: (token: string, id: string) => request<Conversation>(`/api/chat/conversations/${id}`, {}, token),
-  renameConversation: (token: string, id: string, title: string) => request<Conversation>(`/api/chat/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) }, token),
-  deleteConversation: (token: string, id: string) => request<void>(`/api/chat/conversations/${id}`, { method: "DELETE" }, token),
-  shareConversation: (token: string, id: string) => request<{ shareSlug: string }>(`/api/chat/conversations/${id}/share`, { method: "POST" }, token),
-  unshareConversation: (token: string, id: string) => request<void>(`/api/chat/conversations/${id}/share`, { method: "DELETE" }, token),
+  logout: () => request<void>("/api/auth/logout", { method: "POST" }),
+  me: () => request<{ user: User }>("/api/auth/me"),
+  createConversation: (data: { title?: string }) => request<Conversation>("/api/chat/conversations", { method: "POST", body: JSON.stringify(data) }),
+  listConversations: () => request<Conversation[]>("/api/chat/conversations"),
+  getConversation: (id: string) => request<Conversation>(`/api/chat/conversations/${id}`),
+  renameConversation: (id: string, title: string) => request<Conversation>(`/api/chat/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) }),
+  deleteConversation: (id: string) => request<void>(`/api/chat/conversations/${id}`, { method: "DELETE" }),
+  shareConversation: (id: string) => request<{ shareSlug: string }>(`/api/chat/conversations/${id}/share`, { method: "POST" }),
+  unshareConversation: (id: string) => request<void>(`/api/chat/conversations/${id}/share`, { method: "DELETE" }),
   getPublicConversation: (slug: string) => request<PublicConversation>(`/api/public/shared/${slug}`),
   async streamMessage(
-    token: string,
     id: string,
     message: string,
     handlers: {
@@ -71,7 +75,8 @@ export const api = {
     const response = await fetch(`${API_URL}/api/chat/conversations/${id}/messages`, {
       method: "POST",
       signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }),
     }).catch((error) => {
       if (error instanceof DOMException && error.name === "AbortError") throw error
