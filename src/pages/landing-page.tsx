@@ -5,12 +5,12 @@ const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/112%20
 
 const BENEFITS = [
   {
-    title: "Conversa de verdade",
-    body: "Sem aquele tom robótico. Uirapuru responde como alguém que entende você, não como um manual de instruções.",
+    title: "Conversa de gente",
+    body: "Sem aquele tom de manual. O Uirapuru responde como alguém que entende você, não como um call center.",
   },
   {
     title: "Rápido pra resolver",
-    body: "Menos enrolação, mais resposta útil. Direto ao ponto quando você precisa, com calma quando você quer conversar.",
+    body: "IA gringa ama fazer loops desnecessário e torrar seu cartão. O Uirapuru vai direto no ponto. Você pede, ele entrega. Menos filosofia, mais resultado.",
   },
   {
     title: "Sempre à mão",
@@ -34,29 +34,31 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="hero-enter flex flex-1 flex-col items-center justify-center gap-7 px-4 py-20 text-center md:py-28">
         <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight md:text-6xl">
-          Chega de IA que fala como gringo traduzido.
+          SUA IA É GRINGA E BURRA.
         </h1>
         <p className="max-w-xl text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
-          Uirapuru é rápido, direto e entende você sem rodeio. Uma IA brasileira, feita pra gente brasileira.
+          Sinceramente? Ela não te entende. Traduz tudo errado, responde com textão de manual e ainda te deixa na mão quando você mais precisa.
+          O Uirapuru não.
+          É IA brasileira. Rápida, direta e sem frescura. Feita pra quem fala português de verdade, não português de dicionário.
         </p>
         <Link
           to="/chat"
           className="mt-2 flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
-          Fala com o Uirapuru agora
+          Chamar o Uirapuru.
           <ArrowRight className="size-4" />
         </Link>
-        <p className="text-xs text-muted-foreground">É grátis. Sem cartão, sem complicação.</p>
+        <p className="text-xs text-muted-foreground">É grátis. Sem cartão, sem letrinha miúda, sem mimimi.</p>
       </section>
 
       {/* Identidade */}
       <section className="border-y border-border px-4 py-16 md:py-20">
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 text-center">
           <p className="text-xl font-medium tracking-tight text-balance md:text-2xl">
-            Feito no Brasil, pra quem vive no Brasil.
+            Feito aqui. Para quem vive aqui.
           </p>
           <p className="text-pretty text-sm leading-relaxed text-muted-foreground md:text-base">
-            Sem depender de servidor lá fora. Sem resposta que parece traduzida no Google.
+            Sem depender de servidor lá fora. Sem resposta que parece puxada do tradutor.
             Você fala normal. Ele entende normal.
           </p>
         </div>
@@ -87,13 +89,13 @@ export default function LandingPage() {
       {/* Fechamento + CTA final */}
       <section className="flex flex-col items-center gap-6 px-4 py-20 text-center md:py-28">
         <p className="max-w-xl text-balance text-xl font-medium leading-snug md:text-2xl">
-          Você não precisa de outra IA genérica. Precisa de uma que entenda de onde você vem.
+          IA gringa te trata como turista. O Uirapuru te trata como dono da parada toda, tipo um parceiro mesmo.
         </p>
         <Link
           to="/chat"
           className="flex h-12 items-center gap-2 rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
-          Testa e vê a diferença
+          QUERO TESTAR
           <ArrowRight className="size-4" />
         </Link>
       </section>
@@ -101,7 +103,7 @@ export default function LandingPage() {
       <footer className="flex flex-col items-center gap-2 border-t border-border px-4 py-8 text-center">
         <img src={LOGO_URL} alt="Uirapuru" className="h-5 w-auto object-contain opacity-80" />
         <p className="text-[10px] leading-relaxed text-muted-foreground">
-          Uirapuru é um produto SynastrIA Networks. Ao usar, você concorda em revisar as respostas antes de usar para tarefas críticas.
+          Uirapuru é um produto SynastrIA Networks e pesquisa. Ao usar, você concorda em revisar as respostas antes de usar para tarefas críticas.
         </p>
       </footer>
     </main>
